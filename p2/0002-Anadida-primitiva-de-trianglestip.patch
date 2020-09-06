@@ -1,0 +1,112 @@
+From fbdf5ee60a2b69fbc089f3ba7f85d8880a87c692 Mon Sep 17 00:00:00 2001
+From: Rafael Alcalde Azpiazu <nekerafa@gmail.com>
+Date: Tue, 29 Jan 2019 16:03:14 +0100
+Subject: [PATCH] Anadida trianglestrip
+
+---
+ raytracing.py | 56 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 56 insertions(+)
+
+diff --git a/raytracing.py b/raytracing.py
+index 27cb6d0..99bcc0d 100644
+--- a/raytracing.py
++++ b/raytracing.py
+@@ -1,3 +1,5 @@
++# -*- coding: utf-8 -*-
++
+ """
+ MIT License
+ 
+@@ -63,11 +65,45 @@ def intersect_sphere(O, D, S, R):
+             return t1 if t0 < 0 else t0
+     return np.inf
+ 
++def intersect_trianglestrip(O, D, T):
++    for i in range(len(T['vertices'])-2):
++        a, b, c = T['vertices'][i:i+3]
++        if i % 2 == 1:
++            b, a, c = a, b, c
++        N = T['normals'][i]
++        # Primero comprobamos si hay intersección con el plano que contiene el triángulo
++        distance = intersect_plane(O, D, a, N)
++        if distance == np.inf:
++            continue
++        T['last_intersection'] = i
++        # Calculamos el punto de intersección del plano para comprobar que está en el triángulo
++        p = O + D * distance
++        # Comprobamos si el punto está dentro del triángulo por el método del baricentro http://blackpawn.com/texts/pointinpoly/
++        AB = b - a
++        AC = c - a
++        AP = p - a
++
++        dotACAC = np.dot(AC, AC)
++        dotACAB = np.dot(AC, AB)
++        dotACAP = np.dot(AC, AP)
++        dotABAB = np.dot(AB, AB)
++        dotABAP = np.dot(AB, AP)
++
++        invDenom = 1 / (dotACAC * dotABAB - dotACAB * dotACAB)
++        u = (dotABAB * dotACAP - dotACAB * dotABAP) * invDenom
++        v = (dotACAC * dotABAP - dotACAB * dotACAP) * invDenom
++
++        if (u >= 0) and (v >= 0) and (u + v <= 1):
++            return distance
++    return np.inf
++
+ def intersect(O, D, obj):
+     if obj['type'] == 'plane':
+         return intersect_plane(O, D, obj['position'], obj['normal'])
+     elif obj['type'] == 'sphere':
+         return intersect_sphere(O, D, obj['position'], obj['radius'])
++    elif obj['type'] == 'trianglestrip':
++        return intersect_trianglestrip(O, D, obj)
+ 
+ def get_normal(obj, M):
+     # Find normal.
+@@ -75,9 +111,14 @@ def get_normal(obj, M):
+         N = normalize(M - obj['position'])
+     elif obj['type'] == 'plane':
+         N = obj['normal']
++    elif obj['type'] == 'trianglestrip':
++        N = obj['normals'][obj['last_intersection']]
+     return N
+     
+ def get_color(obj, M):
++    if obj['type'] == 'trianglestrip':
++        return obj['colors'][obj['last_intersection'] % len(obj['colors'])]
++
+     color = obj['color']
+     if not hasattr(color, '__len__'):
+         color = color(M)
+@@ -136,6 +177,20 @@ def add_light(position, color):
+     return dict(type='light', position=np.array(position),
+         color=np.array(color))
+     
++# Los triángulos se definen en clock-wise
++def add_trianglestrip(vertices, colors):
++    vertices = [np.array(vertex) for vertex in vertices]
++    normals = []
++    for i in range(len(vertices)-2):
++	if i % 2 == 0:
++            normals.append(np.cross(vertices[i+1] - vertices[i], vertices[i+2] - vertices[i]))
++        else:
++            normals.append(np.cross(vertices[i] - vertices[i+1], vertices[i+2] - vertices[i+1]))
++
++    return dict(type='trianglestrip', vertices=vertices, normals=normals,
++        last_intersection=-1, colors=[np.array(color) for color in colors],
++        specular_c=.0, reflection=.0)
++
+ # List of objects.
+ color_plane0 = 1. * np.ones(3)
+ color_plane1 = 0. * np.ones(3)
+@@ -143,6 +198,7 @@ scene = [add_sphere([.75, .1, 1.], .6, [0., 0., 1.]),
+          add_sphere([-.75, .1, 2.25], .6, [.5, .223, .5]),
+          add_sphere([-2.75, .1, 3.5], .6, [1., .572, .184]),
+          add_plane([0., -.5, 0.], [0., 1., 0.]),
++         add_trianglestrip([[-1., .1, 1.], [-.25, .8, .8], [0., .1, 1.], [1., 1., 1.], [2., .1, 1.]], [[0., 1., 0.], [1., 0., 0.]])
+     ]
+ 
+ # Light position and color.
+-- 
+2.17.1
+

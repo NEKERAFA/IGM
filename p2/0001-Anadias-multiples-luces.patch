@@ -1,0 +1,76 @@
+From 6dea99e478be771aea12c458f9839efbfc1dd56c Mon Sep 17 00:00:00 2001
+From: Rafael Alcalde Azpiazu <nekerafa@gmail.com>
+Date: Tue, 29 Jan 2019 15:51:09 +0100
+Subject: [PATCH] Anadido multiples luces a la escena
+
+---
+ raytracing.py | 37 ++++++++++++++++++++++++-------------
+ 1 file changed, 24 insertions(+), 13 deletions(-)
+
+diff --git a/raytracing.py b/raytracing.py
+index f686fb0..27cb6d0 100644
+--- a/raytracing.py
++++ b/raytracing.py
+@@ -100,19 +100,25 @@ def trace_ray(rayO, rayD):
+     # Find properties of the object.
+     N = get_normal(obj, M)
+     color = get_color(obj, M)
+-    toL = normalize(L - M)
+-    toO = normalize(O - M)
+-    # Shadow: find if the point is shadowed or not.
+-    l = [intersect(M + N * .0001, toL, obj_sh) 
+-            for k, obj_sh in enumerate(scene) if k != obj_idx]
+-    if l and min(l) < np.inf:
+-        return
+     # Start computing the color.
+     col_ray = ambient
+-    # Lambert shading (diffuse).
+-    col_ray += obj.get('diffuse_c', diffuse_c) * max(np.dot(N, toL), 0) * color
+-    # Blinn-Phong shading (specular).
+-    col_ray += obj.get('specular_c', specular_c) * max(np.dot(N, normalize(toL + toO)), 0) ** specular_k * color_light
++    isShadow = True
++    for light in L:
++        toL = normalize(light['position'] - M)
++        toO = normalize(O - M)
++        # Shadow: find if the point is shadowed or not.
++        l = [intersect(M + N * .0001, toL, obj_sh)
++                for k, obj_sh in enumerate(scene) if k != obj_idx]
++        if l and min(l) < np.inf:
++            continue
++        isShadow = False
++        # Lambert shading (diffuse).
++        col_ray += obj.get('diffuse_c', diffuse_c) * max(np.dot(N, toL), 0) * color
++        # Blinn-Phong shading (specular).
++        col_ray += obj.get('specular_c', specular_c) * max(np.dot(N, normalize(toL + toO)), 0) ** specular_k * light['color']
++    
++    if isShadow:
++        return
+     return obj, M, N, col_ray
+ 
+ def add_sphere(position, radius, color):
+@@ -126,6 +132,10 @@ def add_plane(position, normal):
+             if (int(M[0] * 2) % 2) == (int(M[2] * 2) % 2) else color_plane1),
+         diffuse_c=.75, specular_c=.5, reflection=.25)
+     
++def add_light(position, color):
++    return dict(type='light', position=np.array(position),
++        color=np.array(color))
++    
+ # List of objects.
+ color_plane0 = 1. * np.ones(3)
+ color_plane1 = 0. * np.ones(3)
+@@ -136,8 +146,9 @@ scene = [add_sphere([.75, .1, 1.], .6, [0., 0., 1.]),
+     ]
+ 
+ # Light position and color.
+-L = np.array([5., 5., -10.])
+-color_light = np.ones(3)
++L = [add_light([5., 5., -10.], [1., 0., 0.]),
++    add_light([0., 7., 10.], [0., 1., 0.]),
++    add_light([-5., 1., 5.], [0., 0., 1.])]
+ 
+ # Default light and material parameters.
+ ambient = .05
+-- 
+2.17.1
+

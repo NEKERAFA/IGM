@@ -1,0 +1,44 @@
+Film "image" 
+        "integer xresolution" [ 800 ] 
+        "integer yresolution" [ 800 ] 
+        "string filename" [ "lte-orb-silver-kdtree-4.png" ] 
+
+Scale -1 1 1
+LookAt 0 1 0
+        0 0.075 0
+        0 0 1
+Camera "perspective" 
+        "float fov" [ 37 ] 
+
+Sampler "sobol" "integer pixelsamples" 4096
+Integrator "path" "integer maxdepth" 8
+Accelerator "kdtree"
+
+WorldBegin
+
+ReverseOrientation
+
+AttributeBegin
+LightSource "spot" "rgb I" [ 0 5 0 ] "point from" [ -1 1 0 ] "point to" [ 1 0 0 ]
+AttributeEnd
+
+AttributeBegin
+LightSource "distant" "rgb L" [ 0 0 7 ]
+AttributeEnd
+
+# Material in the inner part of the sphere
+MakeNamedMaterial "InnerMat" 
+        "rgb Kd" [ .4 .4 .7 ]
+        "float sigma" [20]
+        "string type" ["matte"]
+
+# Matierial on the outer part of the sphere
+MakeNamedMaterial "OuterMat" 
+        "string type" [ "metal" ]
+        "spectrum eta" "spds/Ag.eta.spd"
+        "spectrum k" "spds/Ag.k.spd"
+        "float roughness" .0025
+
+Include "geometry.pbrt"
+
+WorldEnd
